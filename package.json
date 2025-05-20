@@ -1,0 +1,28 @@
+{
+  "name": "fantasy-library-mcp",
+  "version": "1.0.0",
+  "description": "Un serveur MCP pour une bibliothèque fantasy en TypeScript",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "mcp-server-fantasy-library": "dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc && shx chmod +x dist/*.js",
+    "dev": "tsc && node dist/index.js",
+    "prepare": "npm run build",
+    "watch": "tsc --watch"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.11.4",
+    "pg": "^8.16.0"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.15.2",
+    "shx": "^0.4.0",
+    "typescript": "^5.8.3"
+  }
+}
