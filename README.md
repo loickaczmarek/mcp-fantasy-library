@@ -2,7 +2,7 @@
 
 L'objectif de ce tutoriel est de créer un premier server MCP de type `stdio` en Typescript, et qui donne accès à une base de donnée locale.
 
-Pour avoir plus d'informations sur ce qu'est le protocol MCP : https://modelcontextprotocol.io/introduction
+Pour avoir plus d'informations sur ce qu'est le protocole MCP : https://modelcontextprotocol.io/introduction
 
 ## Prérequis
 
@@ -20,7 +20,7 @@ Et nous pourrons lancer la commande d'installation des packages de notre choix.
 
 Avec npm : `npm install`
 
-## Premier pas
+## Premiers pas
 
 Nous allons ajouter le minimum nécessaire pour faire tourner le server MCP.
 Pour ça, dans `index.ts`, ajouter ceci : 
@@ -63,7 +63,7 @@ Pour l'exercice, nous allons nous concentrer sur deux concepts :
 - l'outil : permet d'effectuer une action précise avec ou sans paramètres. L'usage est stateless, pour un usage ponctuel, et qui n'a pas besoin de garder une connection active, par exemple. C'est comparable à un appel précis d'une API.
 - la ressource : permet de donner des accès. L'usage est stateful, l'usage est prévu pour garder une connection ouverte. C'est comparable à une déclaration d'API.
 
-Pour utiliser le server MCP, nous allons injecter des JSON au format JSON RPC, qui est le format utilisé par le protocol MCP.
+Pour utiliser le server MCP, nous allons injecter des JSON au format JSON RPC, qui est le format utilisé par le protocole MCP.
 
 ## Utilisation outil
 
