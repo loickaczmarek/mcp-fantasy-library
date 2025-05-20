@@ -2,7 +2,7 @@
 
 L'objectif de ce tutoriel est de créer un premier server MCP de type `stdio` en Typescript, et qui donne accès à une base de donnée locale.
 
-Pour avoir plus d'informations sur ce qu'est le format MCP : https://modelcontextprotocol.io/introduction
+Pour avoir plus d'informations sur ce qu'est le protocol MCP : https://modelcontextprotocol.io/introduction
 
 ## Prérequis
 
@@ -63,6 +63,8 @@ Pour l'exercice, nous allons nous concentrer sur deux concepts :
 - l'outil : permet d'effectuer une action précise avec ou sans paramètres. L'usage est stateless, pour un usage ponctuel, et qui n'a pas besoin de garder une connection active, par exemple. C'est comparable à un appel précis d'une API.
 - la ressource : permet de donner des accès. L'usage est stateful, l'usage est prévu pour garder une connection ouverte. C'est comparable à une déclaration d'API.
 
+Pour utiliser le server MCP, nous allons injecter des JSON au format JSON RPC, qui est le format utilisé par le protocol MCP.
+
 ## Utilisation outil
 
 ### Mise en place
@@ -113,7 +115,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
 
 Lancer le build : `npm run build`
 
-Puis, vérifier que ça fonctionne : 
+Puis, vérifier que ça fonctionne avec la method `tools\list` :
 ```shell
 ( cat <<\EOF
 {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","clientInfo":{"name":"example-client","version":"1.0.0"},"capabilities":{}}}
@@ -150,7 +152,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 });
 ```
 
-Build le code et lancer : 
+Build le code et lancer avec la method `tools\call` :
 ```shell
 ( cat <<\EOF
 {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","clientInfo":{"name":"example-client","version":"1.0.0"},"capabilities":{}}}
@@ -247,7 +249,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 });
 ```
 
-Ensuite, il faut builder et valider : 
+Ensuite, il faut builder et valider avec la method `tools\call` :   
 
 ```shell
 ( cat <<\EOF
@@ -259,10 +261,57 @@ EOF
 
 Une description brève de Culture Code devrait apparaître !
 
-## Utilisation ressource WIP
+#### Pour aller plus loin
 
-listing resources :
+Ajouter des tools pour :
+
+- la liste des livres disponibles
+- identifier la personne qui a emprunté le livre donné
+
+## Utilisation ressource
+
+#### Exposition
+
+Comme pour les outils, il faut pouvoir identifier les ressources disponible
+Il faut donc ajouter un handler de requêtes de listing de ressources.
+
+```javascript
+// imports
+import {
+    CallToolRequestSchema,
+    ListToolsRequestSchema,
+    ListResourcesRequestSchema
+} from "@modelcontextprotocol/sdk/types.js";
+
+...
+
+// code
+const SCHEMA_PATH = "schema";
+
+server.setRequestHandler(ListResourcesRequestSchema, async () => {
+    const client = await pool.connect();
+    try {
+        const result = await client.query(
+            "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'",
+        );
+        return {
+            resources: result.rows.map((row) => ({
+                uri: new URL(`${row.table_name}/${SCHEMA_PATH}`, resourceBaseUrl).href,
+                mimeType: "application/json",
+                name: `"${row.table_name}" database schema`,
+            })),
+        };
+    } finally {
+        client.release();
+    }
+});
 ```
+
+Lancer le build : `npm run build`
+
+Puis, vérifier que ça fonctionne, nous allons requêter avec la method `resources/list` : 
+
+```shell
 ( cat <<\EOF
 {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","clientInfo":{"name":"example-client","version":"1.0.0"},"capabilities":{}}}
 {"jsonrpc":"2.0","id":2,"method":"resources/list","params":{}}
@@ -270,11 +319,70 @@ EOF
    ) | npm run dev -- postgresql://admin:password@localhost:5432/bibliotheque
 ```
 
-call resources :
+#### Utilisation
+
+Nous allons ajouter le handler d'utilisation de ressources : 
+
+```javascript
+// import
+import {
+    CallToolRequestSchema,
+    ListResourcesRequestSchema,
+    ListToolsRequestSchema,
+    ReadResourceRequestSchema,
+} from "@modelcontextprotocol/sdk/types.js";
+
+// code
+server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
+    const resourceUrl = new URL(request.params.uri);
+
+    const pathComponents = resourceUrl.pathname.split("/");
+    const schema = pathComponents.pop();
+    const tableName = pathComponents.pop();
+
+    if (schema !== SCHEMA_PATH) {
+        throw new Error("Invalid resource URI");
+    }
+
+    const client = await pool.connect();
+    try {
+        const result = await client.query(
+            "SELECT column_name, data_type FROM information_schema.columns WHERE table_name = $1",
+            [tableName],
+        );
+
+        return {
+            contents: [
+                {
+                    uri: request.params.uri,
+                    mimeType: "application/json",
+                    text: JSON.stringify(result.rows, null, 2),
+                },
+            ],
+        };
+    } finally {
+        client.release();
+    }
+});
 ```
+
+Lançons le build, vérifions que ça fonctionne avec la method `resources/read` :
+
+```shell
 ( cat <<\EOF
 {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","clientInfo":{"name":"example-client","version":"1.0.0"},"capabilities":{}}}
 {"jsonrpc":"2.0","id":2,"method":"resources/read","params":{"uri":"postgres://admin@localhost:5432/clients/schema"}}
 EOF
     ) | npm run dev -- postgresql://admin:password@localhost:5432/bibliotheque
 ```
+
+Le résultat devrait être les informations de schema de la base de donnée
+
+### Pour aller plus loin
+
+Ce tutoriel est basé sur le server MCP Postgres ( [ici](https://github.com/modelcontextprotocol/servers/tree/main/src/postgres) )
+
+Pour le tester en condition réel, l'idéal est de le brancher sur un client MCP.
+La liste se trouve là : https://modelcontextprotocol.io/clients
+
+Ce server a été testé et validé avec le client Claude Code et retourne des résultats satisfaisants avec des prompts comme `donnes moi la description du livre Culture Code`
