@@ -163,27 +163,103 @@ Si tout se passe bien, le message "Hello world !" devrait apparaître en sortie.
 
 #### Connection à la base
 
+Il est temps de connecter le server à la base de données.
 
+Pour ça, on va ajouter le nécessaire : 
+- un argument pour passer l'url local
+- la gestion de la connection
+- la requête à exécuter
 
-## Utilisation ressource
+Dans un premier temps, on va ajouter :
 
-listing tool : 
+```javascript
+// import
+import * as pg from "pg";
+
+// code
+const args = process.argv.slice(2);
+if (args.length === 0) {
+    console.error("Please provide a database URL as a command-line argument");
+    process.exit(1);
+}
+
+const databaseUrl = args[0];
+
+const resourceBaseUrl = new URL(databaseUrl);
+resourceBaseUrl.protocol = "postgres:";
+resourceBaseUrl.password = "";
+
+const pool = new pg.Pool({
+    connectionString: databaseUrl,
+});
 ```
+
+cette partie sert à ouvrir une connection à la base de donnée.
+
+Créons également une méthode qui sera utilisé par l'outil : 
+
+```javascript
+async function getBookDescription(request : any) {
+    const bookName = request.params.arguments?.name as string;
+
+    const client = await pool.connect();
+    try {
+        await client.query("BEGIN TRANSACTION READ ONLY");
+        const result = await client.query(`SELECT description FROM livres WHERE titre = '${bookName}'`);
+        return {
+            content: [{ type: "text", text: JSON.stringify(result.rows, null, 2) }],
+            isError: false,
+        };
+    } catch (error) {
+        throw error;
+    } finally {
+        client
+            .query("ROLLBACK")
+            .catch((error) =>
+                console.warn("Could not roll back transaction:", error),
+            );
+
+        client.release();
+    }
+}
+```
+
+Remplaçons la méthode : 
+
+```javascript
+// avant
+server.setRequestHandler(CallToolRequestSchema, async (request) => {
+    if (request.params.name === "get-book-description") {
+        return {
+            content: [{ type: "text", text: "Hello World !" }],
+            isError: false,
+        };
+    }
+    throw new Error(`Unknown tool: ${request.params.name}`);
+});
+
+// après
+server.setRequestHandler(CallToolRequestSchema, async (request) => {
+    if (request.params.name === "get-book-description") {
+        return await this.getBookDescription(request);
+    }
+    throw new Error(`Unknown tool: ${request.params.name}`);
+});
+```
+
+Ensuite, il faut builder et valider : 
+
+```shell
 ( cat <<\EOF
 {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","clientInfo":{"name":"example-client","version":"1.0.0"},"capabilities":{}}}
-{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}
-EOF
-) | npm run dev -- postgresql://admin:password@localhost:5432/bibliotheque
-```
-
-call tool :
-```
-( cat <<\EOF
-{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","clientInfo":{"name":"example-client","version":"1.0.0"},"capabilities":{}}}
-{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"get-book-description", "arguments" : {"name":"Germinal"}}}
+{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"get-book-description", "arguments" : {"name":"Culture Code"}}}
 EOF
     ) | npm run dev -- postgresql://admin:password@localhost:5432/bibliotheque
 ```
+
+Une description brève de Culture Code devrait apparaître !
+
+## Utilisation ressource WIP
 
 listing resources :
 ```
