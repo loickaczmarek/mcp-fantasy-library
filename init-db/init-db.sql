@@ -38,7 +38,8 @@ INSERT INTO livres (titre, auteur, isbn, description, annee_publication) VALUES
                                                                              ('Madame Bovary', 'Gustave Flaubert', '978-2253004868', 'Roman réaliste sur l''adultère dans la France provinciale', 1857),
                                                                              ('Les Fourmis', 'Bernard Werber', '978-2253063339', 'Roman mêlant fantastique et science sur le monde des fourmis', 1991),
                                                                              ('Germinal', 'Émile Zola', '978-2253004226', 'Roman sur la condition ouvrière au XIXe siècle', 1885),
-                                                                             ('Le Comte de Monte-Cristo', 'Alexandre Dumas', '978-2253098058', 'Roman d''aventures sur la vengeance et la rédemption', 1844);
+                                                                             ('Le Comte de Monte-Cristo', 'Alexandre Dumas', '978-2253098058', 'Roman d''aventures sur la vengeance et la rédemption', 1844),
+                                                                             ('Culture Code', 'OCTO', '978-2253098063', 'La qualité du code, culture collective essentielle, prévient délais, bugs et turn-over tout en garantissant maintenabilité et pérennité.', 2015);
 
 -- Insertion de 5 clients
 INSERT INTO clients (numero_identifiant, nom, prenom, email) VALUES
