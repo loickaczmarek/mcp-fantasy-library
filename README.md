@@ -55,7 +55,115 @@ Nous allons construire et lancer l'application :
 Si tout se passe bien, vous devriez voir apparaître le message suivant : 
 `Starting MCP Fantasy Library server`
 
+## Quelques concepts
+
+Les servers MCP permettent d'exposer des outils, des ressources, des prompts, etc ... ( voir la documentation [ici](https://modelcontextprotocol.io/docs/concepts/architecture) )
+
+Pour l'exercice, nous allons nous concentrer sur deux concepts : 
+- l'outil : permet d'effectuer une action précise avec ou sans paramètres. L'usage est stateless, pour un usage ponctuel, et qui n'a pas besoin de garder une connection active, par exemple. C'est comparable à un appel précis d'une API.
+- la ressource : permet de donner des accès. L'usage est stateful, l'usage est prévu pour garder une connection ouverte. C'est comparable à une déclaration d'API.
+
 ## Utilisation outil
+
+### Mise en place
+
+Nous avons besoin d'une base de donnée, et pour ça, nous allons utiliser le `docker-compose.yml`
+
+lancer `docker-compose up -d`
+
+Vérifier que la base de donnée est accessible via n'importe quel outil ( exemple d'outil : [DBeaver](https://dbeaver.io/download/))
+
+### Création du tool
+
+#### Exposition
+
+Dans un premier temps, nous allons rendre visible les outils de notre server.
+Il faut donc ajouter un handler de requêtes de listing d'outil.
+
+Nous allons aussi en profiter pour déclarer notre premier outil : récupérer la description d'un livre
+
+Dans `index.ts`, il faut ajouter : 
+
+```javascript
+// au niveau des imports
+import {
+    ListToolsRequestSchema
+} from "@modelcontextprotocol/sdk/types.js";
+
+...
+
+// avant de lancer la fonction runServer()
+server.setRequestHandler(ListToolsRequestSchema, async () => {
+    return {
+        tools: [
+            {
+                name: "get-book-description",
+                description: "Get the book description from fantasy library",
+                inputSchema: {
+                    type: "object",
+                    properties: {
+                        name: { type: "string" },
+                    },
+                },
+            },
+        ],
+    };
+});
+```
+
+Lancer le build : `npm run build`
+
+Puis, vérifier que ça fonctionne : 
+```shell
+( cat <<\EOF
+{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","clientInfo":{"name":"example-client","version":"1.0.0"},"capabilities":{}}}
+{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}
+EOF
+) | npm run dev
+```
+
+Parmi la liste des outils, l'outil de récupération de livre devrait être visible dans le résultat.
+La description de l'outil est importante : c'est cette description qui sera utilisée par les LLM pour identifier le bon outil !
+
+#### Utilisation
+
+Maintenant que l'outil est listé, nous allons l'utiliser.
+
+Ajoutons ceci : 
+
+```javascript
+// import
+import {
+    CallToolRequestSchema,
+    ListToolsRequestSchema
+} from "@modelcontextprotocol/sdk/types.js";
+
+// code
+server.setRequestHandler(CallToolRequestSchema, async (request) => {
+    if (request.params.name === "get-book-description") {
+        return {
+            content: [{ type: "text", text: "Hello World !" }],
+            isError: false,
+        };
+    }
+    throw new Error(`Unknown tool: ${request.params.name}`);
+});
+```
+
+Build le code et lancer : 
+```shell
+( cat <<\EOF
+{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","clientInfo":{"name":"example-client","version":"1.0.0"},"capabilities":{}}}
+{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"get-book-description", "arguments" : {}}}
+EOF
+      ) | npm run dev
+```
+
+Si tout se passe bien, le message "Hello world !" devrait apparaître en sortie.
+
+#### Connection à la base
+
+
 
 ## Utilisation ressource
 
