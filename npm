@@ -1,7 +1,0 @@
-{
-  type: function_call,
-  tool: get-fantasy-book,
-  parameters: {
-    name: le_nom_du_livre_fantastique
-  }
-} run dev
